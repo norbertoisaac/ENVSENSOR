@@ -1,0 +1,49 @@
+#! /bin/bash
+# -*- coding: utf-8 -*-
+#emailFrom="noreply@personal.net.py"
+#smtpServerAddress="10.129.5.179"
+#smtpServerPort=25
+#name="MSCFDO-sala1"
+#emailRecipents="norberto.nunez@personal.com.py"
+#temperatureCritical=300
+#url="http://10.150.31.68/cgi-script/sensor/sample.py"
+. /var/lib/radmin/conf/main.conf
+severity=$1
+temperature=$2
+
+python <<HERE
+# -*- coding: utf-8 -*-
+
+# Import the email modules we'll need
+from email.mime.text import MIMEText
+
+# Open a plain text file for reading.  For this example, assume that
+# the text file contains only ASCII characters.
+content='''<html>
+<head>
+</head>
+<body>
+Temperature $severity<br>
+Temperature: '''+str($temperature/10.0)+'''&#xB0;C<br>
+<br>
+Warning threshold:  '''+str($temperatureWarning/10.0)+'''&#xB0;C<br>
+Critical threshold:  '''+str($temperatureCritical/10.0)+'''&#xB0;C<br>
+<br>
+Sensor: $name<br>
+Go to <a href="$url">graphs</a><br>
+</body>
+</html>'''
+msg = MIMEText(content,'html')
+
+msg['Subject'] = "Temperature $severity: "+str($temperature/10.0)+u"°C. $name"
+msg['From'] = '$emailFrom'
+msg['To'] = '$emailRecipents'
+
+# Send the message via our own SMTP server, but don't include the
+# envelope header.
+# Import smtplib for the actual sending function
+import smtplib
+s = smtplib.SMTP('$smtpServerAddress')
+s.sendmail('$emailFrom', '$emailRecipents'.split(','), msg.as_string())
+s.quit()
+HERE

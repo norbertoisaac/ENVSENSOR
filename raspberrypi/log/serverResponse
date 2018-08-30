@@ -1,0 +1,1 @@
+OK OK INSERT INTO temp_and_humd_log (name,lat,long,sampletime,status,message,temperature,humidity) VALUES ('MSCFDO-Sala1',25.0234,57.3456,'2018-07-26 10:46:56',0,'None',233,398)
