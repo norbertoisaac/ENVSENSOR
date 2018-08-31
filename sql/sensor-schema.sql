@@ -1,178 +1,90 @@
---
--- PostgreSQL database dump
---
+/*
+ENVSENSOR is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
 
--- Dumped from database version 9.6.4
--- Dumped by pg_dump version 9.6.4
+ENVSENSOR is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details.
 
-SET statement_timeout = 0;
-SET lock_timeout = 0;
-SET idle_in_transaction_session_timeout = 0;
-SET client_encoding = 'UTF8';
-SET standard_conforming_strings = on;
-SET check_function_bodies = false;
-SET client_min_messages = warning;
-SET row_security = off;
+You should have received a copy of the GNU General Public License along with ENVSENSOR. If not, see https://www.gnu.org/licenses/.
+*/
+CREATE DATABASE envsensor;
+-- Create role. User: envsysfe, password: %envT434%
+-- echo -n "%envT434%envsysfe" | md5sum
+CREATE ROLE envsysfe PASSWORD 'md5c8ee62efe4cc0c54b05c1774c289ccf9' NOSUPERUSER NOCREATEDB NOCREATEROLE INHERIT LOGIN;
+\c envsensor
 
---
--- Name: plpgsql; Type: EXTENSION; Schema: -; Owner: 
---
-
-CREATE EXTENSION IF NOT EXISTS plpgsql WITH SCHEMA pg_catalog;
-
-
---
--- Name: EXTENSION plpgsql; Type: COMMENT; Schema: -; Owner: 
---
-
-COMMENT ON EXTENSION plpgsql IS 'PL/pgSQL procedural language';
-
-
-SET search_path = public, pg_catalog;
-
-SET default_tablespace = '';
-
-SET default_with_oids = false;
-
---
--- Name: sensor; Type: TABLE; Schema: public; Owner: postgres
---
-
-CREATE TABLE sensor (
-    id integer NOT NULL,
-    name character varying,
-    lat real,
-    long real,
-    tempreaturewarning integer,
-    tempreaturecritical integer,
-    humiditywarning integer,
-    humiditycritical integer
+-- Devices tables
+CREATE TABLE device (
+    id serial PRIMARY KEY,
+    name character varying UNIQUE NOT NULL,
+    version integer DEFAULT 1,
+    active boolean DEFAULT true,
+    floorplanPosition character varying DEFAULT NULL,
+    muteAlarmsNotif boolean DEFAULT false,
+    emailSender char,
+    emailRecipients char, -- Comma sepaated string list of recipients
+    lat real DEFAULT 0,
+    long real DEFAULT 0,
+    tempreatureWarning integer DEFAULT 320,
+    tempreatureCritical integer DEFAULT 350,
+    humidityWarning integer DEFAULT 700,
+    humidityCritical integer DEFAULT 900
 );
+GRANT ALL ON device TO envsysfe;
+GRANT ALL ON device_id_seq TO envsysfe;
 
-
-ALTER TABLE sensor OWNER TO postgres;
-
---
--- Name: sensor_id_seq; Type: SEQUENCE; Schema: public; Owner: postgres
---
-
-CREATE SEQUENCE sensor_id_seq
-    START WITH 1
-    INCREMENT BY 1
-    NO MINVALUE
-    NO MAXVALUE
-    CACHE 1;
-
-
-ALTER TABLE sensor_id_seq OWNER TO postgres;
-
---
--- Name: sensor_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: postgres
---
-
-ALTER SEQUENCE sensor_id_seq OWNED BY sensor.id;
-
-
---
--- Name: temp_and_humd_log; Type: TABLE; Schema: public; Owner: postgres
---
-
+-- Temperature and humidity log
 CREATE TABLE temp_and_humd_log (
-    id bigint NOT NULL,
+    id bigserial PRIMARY KEY,
+    deletable boolean DEFAULT true, -- Mark as false on raise alarm
     tst timestamp without time zone DEFAULT now(),
-    name character varying,
-    lat real,
-    long real,
-    sampletime timestamp without time zone,
-    status integer,
+    name character varying NOT NULL,
+    lat real DEFAULT 0,
+    long real DEFAULT 0,
+    sampletime timestamp without time zone NOT NULL,
+    status integer DEFAULT 0,
     message character varying,
-    temperature integer,
-    humidity integer
+    temperature integer NOT NULL,
+    humidity integer NOT NULL
 );
+GRANT ALL ON temp_and_humd_log TO envsysfe;
+GRANT ALL ON temp_and_humd_log_id_seq TO envsysfe;
+CREATE INDEX i01_temp_and_humd_log ON temp_and_humd_log (name,sampletime,status);
 
+-- SMTP template
+CREATE TABLE smtp_template (
+  templateName varchar PRIMARY KEY,
+  active boolean default true,
+  smtpServerAddress inet DEFAULT '127.0.0.1',
+  smtpServerPort integer DEFAULT 25,
+  smtpAuth boolean DEFAULT false,
+  smtpUser varchar,
+  smtpPassword varchar
+);
+GRANT ALL ON smtp_template TO envsysfe;
+INSERT INTO smtp_template(templateName) VALUES ('default');
 
-ALTER TABLE temp_and_humd_log OWNER TO postgres;
+-- Alarm type
+CREATE TABLE alarm_type (
+  alarmNumber integer PRIMARY KEY,
+  alarmSeverity varchar,
+  autoAck boolean default false,
+  alarmDescription varchar
+);
+GRANT ALL ON alarm_type TO envsysfe;
+INSERT INTO alarm_type(alarmNumber,alarmSeverity,autoAck,alarmDescription) VALUES
+(1,'warning',true,'Temperature warning threshold reached'),
+(2,'critical',true,'Temperature critical threshold reached'),
+(3,'warning',true,'Humidity warning threshold reached'),
+(4,'critical',true,'Humidity critical threshold reached'),
+(5,'critical',true,'Sensor not responding'),
+(6,'critical',true,'Device not responding')
+;
 
---
--- Name: temp_and_humd_log_id_seq; Type: SEQUENCE; Schema: public; Owner: postgres
---
-
-CREATE SEQUENCE temp_and_humd_log_id_seq
-    START WITH 1
-    INCREMENT BY 1
-    NO MINVALUE
-    NO MAXVALUE
-    CACHE 1;
-
-
-ALTER TABLE temp_and_humd_log_id_seq OWNER TO postgres;
-
---
--- Name: temp_and_humd_log_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: postgres
---
-
-ALTER SEQUENCE temp_and_humd_log_id_seq OWNED BY temp_and_humd_log.id;
-
-
---
--- Name: sensor id; Type: DEFAULT; Schema: public; Owner: postgres
---
-
-ALTER TABLE ONLY sensor ALTER COLUMN id SET DEFAULT nextval('sensor_id_seq'::regclass);
-
-
---
--- Name: temp_and_humd_log id; Type: DEFAULT; Schema: public; Owner: postgres
---
-
-ALTER TABLE ONLY temp_and_humd_log ALTER COLUMN id SET DEFAULT nextval('temp_and_humd_log_id_seq'::regclass);
-
-
---
--- Name: sensor sensor_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
---
-
-ALTER TABLE ONLY sensor
-    ADD CONSTRAINT sensor_pkey PRIMARY KEY (id);
-
-
---
--- Name: temp_and_humd_log temp_and_humd_log_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
---
-
-ALTER TABLE ONLY temp_and_humd_log
-    ADD CONSTRAINT temp_and_humd_log_pkey PRIMARY KEY (id);
-
-
---
--- Name: i1_temp_and_humd_log; Type: INDEX; Schema: public; Owner: postgres
---
-
-CREATE INDEX i1_temp_and_humd_log ON temp_and_humd_log USING btree (sampletime, name, status);
-
-
---
--- Name: sensor; Type: ACL; Schema: public; Owner: postgres
---
-
-GRANT ALL ON TABLE sensor TO agent;
-
-
---
--- Name: temp_and_humd_log; Type: ACL; Schema: public; Owner: postgres
---
-
-GRANT ALL ON TABLE temp_and_humd_log TO agent;
-
-
---
--- Name: temp_and_humd_log_id_seq; Type: ACL; Schema: public; Owner: postgres
---
-
-GRANT USAGE ON SEQUENCE temp_and_humd_log_id_seq TO agent;
-
-
---
--- PostgreSQL database dump complete
---
-
+-- Alarm log
+CREATE TABLE alarm_log (
+  id bigserial PRIMARY KEY,
+  alarmNumber integer,
+  temAndHumLogId bigint,
+  ack boolean DEFAULT false
+);
+GRANT ALL ON alarm_log_id_seq TO envsysfe;
+GRANT ALL ON alarm_log TO envsysfe;
