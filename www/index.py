@@ -141,17 +141,60 @@ if menu=='charts':
   body += charts.getAllCharts(dbconn.conn,dbconn.cur)
 elif menu=='devices':
   import devices
+  import time
+
   if 'addDevice' in form:
-    dev = {'name':'','active':True,'muteNoti':False,'twt':0,'tct':0,'hwt':0,'hct':0}
+    dev = {'name':'','active':True,'muteNoti':True,'floorPlan':None,'twt':0,'tct':0,'hwt':0,'hct':0}
     dev['name'] = form.getvalue('deviceName')
-    dev['active'] = form.getvalue('deviceActive')
-    dev['muteNoti'] = form.getvalue('deviceMuteNoti')
-    dev['twt'] = form.getvalue('tempWarning')
-    dev['tct'] = form.getvalue('tempCritical')
-    dev['hwt'] = form.getvalue('humidityWarning')
-    dev['hct'] = form.getvalue('humidityCritical')
-    devices.addDevice(dev)
+    if form.getvalue('deviceActive') == None:
+      dev['active'] = False
+    if form.getvalue('deviceMuteNoti') == None:
+      dev['muteNoti'] = False
+    dev['twt'] = float(form.getvalue('tempWarning'))*10
+    dev['tct'] = float(form.getvalue('tempCritical'))*10
+    dev['hwt'] = float(form.getvalue('humidityWarning'))*10
+    dev['hct'] = float(form.getvalue('humidityCritical'))*10
+    if 'deviceFP' in form:
+      import random
+      dev['floorPlan'] = str(time.time())+'-'+str(random.randint(1,101)*12345)+'.png'
+      #f = open(dev['floorPlan'],'w')
+      #f.write(form['deviceFP'])
+      #f.close()
+      #body += '<p>'+str(form['deviceFP'].value)+'</p>'
+      if form['deviceFP'].file:
+        f = open(dbconn.imagesDB+'/'+dev['floorPlan'],'w')
+	f.write(form['deviceFP'].file.read())
+	f.close()
+    devices.addDevice(dev,dbconn.conn,dbconn.cur)
+    #body += '<h1>'+str(form)+'</h1>'
     body += '<h1>'+str(dev)+'</h1>'
+    #body += cgi.print_form(form)
+  if 'modDevice' in form:
+    dev = {'id':None,'active':True,'muteNoti':True,'floorPlan':None,'twt':0,'tct':0,'hwt':0,'hct':0}
+    dev['id'] = int(form.getvalue('devId'))
+    if form.getvalue('deviceActive') == None:
+      dev['active'] = False
+    if form.getvalue('deviceMuteNoti') == None:
+      dev['muteNoti'] = False
+    dev['twt'] = float(form.getvalue('tempWarning'))*10
+    dev['tct'] = float(form.getvalue('tempCritical'))*10
+    dev['hwt'] = float(form.getvalue('humidityWarning'))*10
+    dev['hct'] = float(form.getvalue('humidityCritical'))*10
+    if 'deviceFP' in form:
+      import random
+      dev['floorPlan'] = str(time.time())+'-'+str(random.randint(1,101)*12345)+'.png'
+      #f = open(dev['floorPlan'],'w')
+      #f.write(form['deviceFP'])
+      #f.close()
+      #body += '<p>'+str(form['deviceFP'].value)+'</p>'
+      if form['deviceFP'].file:
+        f = open(dbconn.imagesDB+'/'+dev['floorPlan'],'w')
+	f.write(form['deviceFP'].file.read())
+	f.close()
+    devices.modDevice(dev,dbconn.conn,dbconn.cur)
+    #body += '<h1>'+str(form)+'</h1>'
+    body += '<h1>'+str(dev)+'</h1>'
+    #body += cgi.print_form(form)
   body += devices.getAllDevicesHtml(dbconn.conn,dbconn.cur)
   #import graph
   #import base64
