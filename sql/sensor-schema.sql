@@ -37,6 +37,7 @@ CREATE TABLE temp_and_humd_log (
     deletable boolean DEFAULT true, -- Mark as false on raise alarm
     tst timestamp without time zone DEFAULT now(),
     name character varying NOT NULL,
+    ip inet NOT NULL,
     lat real DEFAULT 0,
     long real DEFAULT 0,
     sampletime timestamp without time zone NOT NULL,
@@ -45,7 +46,7 @@ CREATE TABLE temp_and_humd_log (
     temperature integer NOT NULL,
     humidity integer NOT NULL
 );
-GRANT ALL ON temp_and_humd_log TO envsysfe;
+GRANT SELECT,INSERT ON temp_and_humd_log TO envsysfe;
 GRANT ALL ON temp_and_humd_log_id_seq TO envsysfe;
 CREATE INDEX i01_temp_and_humd_log ON temp_and_humd_log (name,sampletime,status);
 
@@ -62,29 +63,61 @@ CREATE TABLE smtp_template (
 GRANT ALL ON smtp_template TO envsysfe;
 INSERT INTO smtp_template(templateName) VALUES ('default');
 
--- Alarm type
+-- User object
+CREATE TABLE system_users (
+  id serial PRIMARY KEY,
+  singUptst timestamp DEFAULT now(),
+  status integer DEFAULT 0, -- 0=active, 1=suspended
+  userType integer NOT NULL, -- 0=system, 1=local login, 2=ldap login, 3=pam login, 4=TACACS login
+  userNic varchar UNIQUE NOT NULL, -- base64 of only alphabetic and numeric characters
+  userName varchar NOT NULL, -- base64 of any type of character
+  userPassword varchar -- sha256sum password for local users
+);
+GRANT SELECT,INSERT,UPDATE ON system_users TO envsysfe;
+GRANT USAGE ON system_users_id_seq TO envsysfe;
+INSERT INTO system_users(id,userType,userNic,userName) VALUES (0,0,'system0','Web service front-end');
+
+-- Alarm type. Based on RFC5674 (https://tools.ietf.org/html/rfc5674)
 CREATE TABLE alarm_type (
   alarmNumber integer PRIMARY KEY,
   alarmSeverity varchar,
-  autoAck boolean default false,
+  alarmSeverityNumber integer,
+  alarmResource varchar,
+  autoClear boolean DEFAULT true,
+  autoAck boolean DEFAULT false,
   alarmDescription varchar
 );
-GRANT ALL ON alarm_type TO envsysfe;
-INSERT INTO alarm_type(alarmNumber,alarmSeverity,autoAck,alarmDescription) VALUES
-(1,'warning',true,'Temperature warning threshold reached'),
-(2,'critical',true,'Temperature critical threshold reached'),
-(3,'warning',true,'Humidity warning threshold reached'),
-(4,'critical',true,'Humidity critical threshold reached'),
-(5,'critical',true,'Sensor not responding'),
-(6,'critical',true,'Device not responding')
+GRANT SELECT ON alarm_type TO envsysfe;
+INSERT INTO alarm_type(alarmNumber,alarmSeverityNumber,alarmSeverity,alarmResource,autoClear,alarmDescription) VALUES
+(1,2,'Major','Environment temperature',true,'Temperature 1° threshold reached'),
+(2,1,'Critical','Environment temperature',true,'Temperature 2° threshold reached'),
+(3,2,'Major','Environment humidity',true,'Humidity 1° threshold reached'),
+(4,1,'Critical','Environment humidity',true,'Humidity 2° threshold reached'),
+(5,4,'Warning','Sensor',true,'Sensor not responding'),
+(6,4,'Warning','Device',true,'Device not responding'),
+(7,4,'Warning','Device',true,'Device reboot'),
+(8,3,'Minor','Sensor',true,'Bad sensor data'),
+(9,4,'Warning','O&M',false,'Configuration change'),
+(10,5,'Notice','O&M',false,'User web login'),
+(11,5,'Notice','O&M',false,'User web logout'),
+(12,1,'Critical','System',true,'System database not available')
 ;
 
 -- Alarm log
 CREATE TABLE alarm_log (
   id bigserial PRIMARY KEY,
+  raiseTst  timestamp DEFAULT now(),
+  cleareTst timestamp,
+  ackTst    timestamp,
+  userId integer DEFAULT 0, -- 0=System
+  status integer DEFAULT 0, -- 0-Active, 1-Cleared
   alarmNumber integer,
   temAndHumLogId bigint,
   ack boolean DEFAULT false
 );
+CREATE INDEX i01_alarm_log_tst         ON alarm_log(raiseTst);
+CREATE INDEX i02_alarm_log_status      ON alarm_log(status);
+CREATE INDEX i03_alarm_log_alarmNumber ON alarm_log(alarmNumber);
 GRANT ALL ON alarm_log_id_seq TO envsysfe;
-GRANT ALL ON alarm_log TO envsysfe;
+GRANT SELECT ON alarm_log TO envsysfe;
+GRANT UPDATE (status,ack) ON alarm_log TO envsysfe;

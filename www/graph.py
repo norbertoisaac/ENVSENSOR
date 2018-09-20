@@ -13,6 +13,17 @@ body = ''
 altura = 250
 alturaAcum = 0
 
+def getDeviceFPBase64(conn,cur,baseDir,deviceId):
+  sql = 'SELECT floorplanPosition from device where id='+str(deviceId)
+  cur.execute(sql)
+  imageName = cur.fetchone()['floorplanposition']
+  image = None
+  if imageName:
+    f = open(baseDir+'/'+imageName,'r')
+    image = str(f.read()).encode('base64')
+    f.close
+  return image
+
 def graph_format(formato):
   theme.output_format = formato
   theme.reinitialize()

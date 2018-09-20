@@ -3,7 +3,7 @@ def getAllCharts(conn,cur):
   import graph
   import base64
   body = ''
-  devs = devices.getAllDevices(conn,cur)
+  devs = devices.getAllActiveDevices(conn,cur)
   for dev in devs:
     graph.graph_draw(conn,cur,dev['name'])
     body+= '<img src="data:image/png;base64,'+base64.b64encode(graph.body)+'" />'

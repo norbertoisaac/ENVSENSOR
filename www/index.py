@@ -9,14 +9,33 @@ if dbconn.inres != 0:
 #fname = open('reporteWelcome.pdf','w')
 #fname.write(graph.body)
 #fname.close()
+body = ''
 form = cgi.FieldStorage()
 if 'menu' in form:
   menu=form.getvalue('menu')
 else:
-  menu = ''
+  menu = 'alarms'
+
+if 'showFPDeviceId' in form:
+  import graph
+  deviceId = form.getvalue('showFPDeviceId')
+  imageBase64 = graph.getDeviceFPBase64(dbconn.conn,dbconn.cur,dbconn.imagesDB,deviceId)
+  body += '''<html><body>
+  '''
+  if imageBase64:
+    body += '<image style="margin-left:auto;margin-right:auto;display:block;" src="data:image/png;base64,'+imageBase64+'">'
+  else:
+    body += '<h1 style="text-align:center;color:white;">This device does not have floorplan image</h1>'
+  body += '</body></html>'
+  headers = 'Content-Type: text/html; charset=utf-8\r\n'
+  headers += "Content-Length: "+str(len(body))+"\r\n\r\n"
+  sys.stdout.write(headers+body)
+  quit()
+
 body = '''<!DOCTYPE html>
 <html>
   <head>'''
+
 if menu == 'charts':
   body += '<meta http-equiv="refresh" content="10">'
 body +='''
@@ -116,8 +135,13 @@ body +='''
     </div>
     <!-- MENU -->
     <div style="background-color:#5f5f5f;height:30px">
-    <a class="menu" href="?menu=charts" style="float:left;display:block;padding:5px 15px 5px 15px;text-decoration:none;letter-spacing:1px;font-size:17px;color:#f1f1f1;border:none;
 '''
+# Menu
+body += '<a class="menu" href="?menu=alarms" style="float:left;display:block;padding:5px 15px 5px 15px;text-decoration:none;letter-spacing:1px;font-size:17px;color:#f1f1f1;border:none;'
+if menu=='alarms':
+  body += 'background-color:black;'
+body += '">ALARMS</a>'
+body += '<a class="menu" href="?menu=charts" style="float:left;display:block;padding:5px 15px 5px 15px;text-decoration:none;letter-spacing:1px;font-size:17px;color:#f1f1f1;border:none;'
 if menu=='charts':
   body += 'background-color:black;'
 body += '">CHARTS</a>'
@@ -136,12 +160,30 @@ body += '''<!-- <a class="menu" href="?menu=sqltpl" style="float:left;display:bl
     </div>
   </div>
   <div style="background-color:#e6e6e6;width:100%;position:fixed;top:100px;bottom:0px;overflow-y:auto">'''
+
+# Alarms menu content
+if menu=='alarms':
+  import alarms
+  if 'searchAlarm' in form:
+    body += str(form)
+  body += '<br><div style="float:left;display:block;"><span style="color:black;"></span><form id="filterAlarm" method="post"><span style="font-weight: bold;">Filter:  </span>Device<select name="deviceId"><option value="---">All</option>'
+  import devices
+  devs = devices.getAllDevices(dbconn.conn,dbconn.cur)
+  for dev in devs:
+    body += '<option value="'+str(dev['id'])+'">'+dev['name']+'</option>'
+  body += '</select> Severity<select name="sev"><option value="5">Notice</option><option value="4">Warning</option><option value="3">Minor</option><option value="2" selected>Major</option><option value="1">Critical</option></select> Active<select name="active"><option value="--">All</option><option value="t">Yes</option><option value="f">No</option></select> Acknowledged<select name="ack"><option value="--">All</option><option value="t">Yes</option><option value="f">No</option></select> Count<input name="count" value="100" type="number" style="width:55px"> <input type="submit" name="searchAlarm" value="Search" style="background-color:yellow"></form></div>'
+
+# Charts menu content
 if menu=='charts':
   import charts
   body += charts.getAllCharts(dbconn.conn,dbconn.cur)
-elif menu=='devices':
+
+# Devices menu content
+if menu=='devices':
   import devices
   import time
+  import os
+  #body += '<h1>'+str(os.environ)+'</h1>'
 
   if 'addDevice' in form:
     dev = {'name':'','active':True,'muteNoti':True,'floorPlan':None,'twt':0,'tct':0,'hwt':0,'hct':0}
@@ -167,7 +209,7 @@ elif menu=='devices':
 	f.close()
     devices.addDevice(dev,dbconn.conn,dbconn.cur)
     #body += '<h1>'+str(form)+'</h1>'
-    body += '<h1>'+str(dev)+'</h1>'
+    #body += '<h1>'+str(dev)+'</h1>'
     #body += cgi.print_form(form)
   if 'modDevice' in form:
     dev = {'id':None,'active':True,'muteNoti':True,'floorPlan':None,'twt':0,'tct':0,'hwt':0,'hct':0}
@@ -180,30 +222,21 @@ elif menu=='devices':
     dev['tct'] = float(form.getvalue('tempCritical'))*10
     dev['hwt'] = float(form.getvalue('humidityWarning'))*10
     dev['hct'] = float(form.getvalue('humidityCritical'))*10
-    if 'deviceFP' in form:
+    if form['deviceFP'].value != '':
       import random
       dev['floorPlan'] = str(time.time())+'-'+str(random.randint(1,101)*12345)+'.png'
-      #f = open(dev['floorPlan'],'w')
-      #f.write(form['deviceFP'])
-      #f.close()
-      #body += '<p>'+str(form['deviceFP'].value)+'</p>'
       if form['deviceFP'].file:
         f = open(dbconn.imagesDB+'/'+dev['floorPlan'],'w')
 	f.write(form['deviceFP'].file.read())
 	f.close()
-    devices.modDevice(dev,dbconn.conn,dbconn.cur)
+    devices.modDevice(dbconn.imagesDB,dev,dbconn.conn,dbconn.cur)
     #body += '<h1>'+str(form)+'</h1>'
-    body += '<h1>'+str(dev)+'</h1>'
-    #body += cgi.print_form(form)
+    #body += '<h1>'+str(dev)+'</h1>'
+  if 'rmvDevice' in form:
+    dev = {'id':None,'active':True,'muteNoti':True,'floorPlan':None,'twt':0,'tct':0,'hwt':0,'hct':0}
+    dev['id'] = int(form.getvalue('devId'))
+    devices.rmvDevice(dbconn.imagesDB,dev,dbconn.conn,dbconn.cur)
   body += devices.getAllDevicesHtml(dbconn.conn,dbconn.cur)
-  #import graph
-  #import base64
-  #graph.graph_draw(dbconn.conn,dbconn.cur,'MSCFDO-Sala2')
-  #body+= '<img src="data:image/png;base64,'+base64.b64encode(graph.body)+'" />'
-  #graph.graph_draw(dbconn.conn,dbconn.cur,'MSCFDO-Sala1')
-  #body+= '<img src="data:image/png;base64,'+base64.b64encode(graph.body)+'" />'
-  #graph.graph_draw(dbconn.conn,dbconn.cur,'MSCCDE-Sala1')
-  #body+= '<img src="data:image/png;base64,'+base64.b64encode(graph.body)+'" />'
 body+='''
   </div>
   </body>
