@@ -164,14 +164,43 @@ body += '''<!-- <a class="menu" href="?menu=sqltpl" style="float:left;display:bl
 # Alarms menu content
 if menu=='alarms':
   import alarms
+  alarmSearchInput = {'deviceId':None,'severity':2,'active':None,'count':100}
   if 'searchAlarm' in form:
     body += str(form)
-  body += '<br><div style="float:left;display:block;"><span style="color:black;"></span><form id="filterAlarm" method="post"><span style="font-weight: bold;">Filter:  </span>Device<select name="deviceId"><option value="---">All</option>'
+  body += '<br><div style="float:left;display:block;"><span style="color:black;"></span><form id="filterAlarm" method="post"><span style="font-weight: bold;">Filter:  </span>Device<select name="deviceId"><option value="">All</option>'
   import devices
   devs = devices.getAllDevices(dbconn.conn,dbconn.cur)
+  if 'deviceId' in form:
+    alarmSearchInput['deviceId'] = int(form.getvalue('deviceId'))
   for dev in devs:
-    body += '<option value="'+str(dev['id'])+'">'+dev['name']+'</option>'
-  body += '</select> Severity<select name="sev"><option value="5">Notice</option><option value="4">Warning</option><option value="3">Minor</option><option value="2" selected>Major</option><option value="1">Critical</option></select> Active<select name="active"><option value="--">All</option><option value="t">Yes</option><option value="f">No</option></select> Acknowledged<select name="ack"><option value="--">All</option><option value="t">Yes</option><option value="f">No</option></select> Count<input name="count" value="100" type="number" style="width:55px"> <input type="submit" name="searchAlarm" value="Search" style="background-color:yellow"></form></div>'
+    body += '<option value="'+str(dev['id'])+'"'
+    if alarmSearchInput['deviceId'] == dev['id']:
+      body += ' selected'
+    body += '>'+dev['name']+'</option>'
+  body += '</select> Severity<select name="sev">'
+  if 'sev' in form:
+    alarmSearchInput['severity'] = int(form.getvalue('sev'))
+  for sevKey,sev in alarms.severities.iteritems():
+    body += '<option value="'+str(sevKey)+'"'
+    if alarmSearchInput['severity'] == sevKey:
+      body += ' selected'
+    body += '>'+sev+'</option>'
+  body += '</select> Active<select name="active"><option value="">All</option>''<option value="t"'
+  if 'active' in form:
+    alarmSearchInput['active'] = form.getvalue('active')
+    if form.getvalue('active') == 't':
+      body += ' selected'
+    body += '>Yes</option><option value="f"'
+    if form.getvalue('active') == 'f':
+      body += ' selected'
+    body += '>No</option>'
+  else:
+    body += '>Yes</option><option value="f">No</option>'
+  body += '</select> Count<input name="count" value="'
+  if 'count' in form:
+    alarmSearchInput['count'] = int(form.getvalue('count'))
+  body += str(alarmSearchInput['count']) +'" type="number" style="width:55px" min="1"> <input type="submit" name="searchAlarm" value="Search" style="background-color:yellow"></form></div>'
+  #body += str(alarmSearchInput)
 
 # Charts menu content
 if menu=='charts':
