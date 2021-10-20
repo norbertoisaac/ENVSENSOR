@@ -1,9 +1,9 @@
 #! /usr/bin/python
 permanenciaPorDefecto=300
 tiempoMaximoParaNotificar=600
-workPath='/var/www/html/cgi-script/sensor'
-logPath=workPath+'/log'
-sensoresFp=workPath+'/sensores.json'
+home='/var/lib/envsensor'
+logPath=home+'/log'
+sensoresFp=home+'/sensores.json'
 import json
 def notificarEventos():
   import time
@@ -18,7 +18,7 @@ def notificarEventos():
   sensores=json.load(f1)
   f1.close()
   # Notificaciones
-  notificacionesCP=workPath+'/'+'notificaciones.json'
+  notificacionesCP=home+'/'+'notificaciones.json'
   f1=open(notificacionesCP,'r')
   notificacionesC=json.load(f1)
   f1.close()
