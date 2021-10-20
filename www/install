@@ -1,0 +1,20 @@
+#! /bin/bash
+set -x
+home="/var/lib/envsensor"
+# Creando usuario y grupo
+addgroup --system envsensor
+adduser --system --home $home --no-create-home --ingroup envsensor envsensor
+# Creando archivos y directorios
+mkdir -p $home/log
+chown envsensor:www-data $home/log
+chmod 770 $home/log
+cp index.py graph.py eventos.py dbconn.py sample.py sensores.json crontab apache2.conf $home
+chmod 540 $home/{sample.py,index.py}
+chown www-data:envsensor $home/{sample.py,index.py}
+# Crontab config
+crontab -u envsensor $home/crontab
+# Apache2 config
+ln -s /var/lib/envsensor/apache2.conf /etc/apache2/conf-enabled/envsensor.conf
+# Reiniciando servicios
+systemctl reload apache2
+
