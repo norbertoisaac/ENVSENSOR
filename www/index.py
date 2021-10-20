@@ -2,6 +2,10 @@
 import cgi
 import sys
 import dbconn
+dirP="/var/www/html/cgi-script/sensor"
+sensoresF=dirP+"/sensores.json"
+sensoresStatusF=dirP+"/sensoresStatus.json"
+logDir=dirP+"/log"
 if dbconn.inres != 0:
   quit()
 #graph.graph_format('pdf')
@@ -9,37 +13,25 @@ if dbconn.inres != 0:
 #fname = open('reporteWelcome.pdf','w')
 #fname.write(graph.body)
 #fname.close()
-body = ''
 form = cgi.FieldStorage()
+body = '''<!DOCTYPE html>
+<html>
+<!-- Nucleo S.A.
+   Autor: Norberto.Nunez@personal.com.py
+   Copyright NUCLEO S.A. 2018
+   Este es un script que despliega la pagina de estadisticas de los sensores
+   -->
+  <head>'''
+if 'lapso' in form:
+  lapso=form.getvalue('lapso')
+else:
+  lapso='24h'
 if 'menu' in form:
   menu=form.getvalue('menu')
 else:
-  menu = 'alarms'
-
-if 'showFPDeviceId' in form:
-  import graph
-  deviceId = form.getvalue('showFPDeviceId')
-  imageBase64 = graph.getDeviceFPBase64(dbconn.conn,dbconn.cur,dbconn.imagesDB,deviceId)
-  body += '''<html><body>
-  '''
-  if imageBase64:
-    body += '<image style="margin-left:auto;margin-right:auto;display:block;" src="data:image/png;base64,'+imageBase64+'">'
-  else:
-    body += '<h1 style="text-align:center;color:white;">This device does not have floorplan image</h1>'
-  body += '</body></html>'
-  headers = 'Content-Type: text/html; charset=utf-8\r\n'
-  headers += "Content-Length: "+str(len(body))+"\r\n\r\n"
-  sys.stdout.write(headers+body)
-  quit()
-
-body = '''<!DOCTYPE html>
-<html>
-  <head>'''
-
-if menu == 'charts':
-  body += '<meta http-equiv="refresh" content="10">'
+  menu = 'charts'
 body +='''
-    <title>EnvSensor</title>
+    <title>Sensor</title>
     <link rel="shortcut icon" type="image/x-icon" href="favicon.ico" />
     <script>
       function selectsubg(){
@@ -131,141 +123,91 @@ body +='''
   <div style="top:0;width:100%;height:100px;position:fixed">
     <!-- TOP NAV -->
     <div style="text-align:center;background-color:#6666ff;height:70px">
-      <h style="font-size:300%;text-align:center;">Environment status</h>
+      <h style="font-size:300%;text-align:center;">Sensor status</h>
     </div>
     <!-- MENU -->
     <div style="background-color:#5f5f5f;height:30px">
-'''
-# Menu
-body += '<a class="menu" href="?menu=alarms" style="float:left;display:block;padding:5px 15px 5px 15px;text-decoration:none;letter-spacing:1px;font-size:17px;color:#f1f1f1;border:none;'
-if menu=='alarms':
-  body += 'background-color:black;'
-body += '">ALARMS</a>'
-body += '<a class="menu" href="?menu=charts" style="float:left;display:block;padding:5px 15px 5px 15px;text-decoration:none;letter-spacing:1px;font-size:17px;color:#f1f1f1;border:none;'
-if menu=='charts':
-  body += 'background-color:black;'
-body += '">CHARTS</a>'
-body += '<a class="menu" href="?menu=devices" style="float:left;display:block;padding:5px 15px 5px 15px;text-decoration:none;letter-spacing:1px;font-size:17px;color:#f1f1f1;border:none;'
-if menu=='devices':
-  body += 'background-color:black;'
-body += '">DEVICES</a>'
-body += '''<!-- <a class="menu" href="?menu=sqltpl" style="float:left;display:block;padding:5px 15px 5px 15px;text-decoration:none;letter-spacing:1px;font-size:17px;color:#f1f1f1;border:none;">QUERY TEMPLATES</a> -->
+      <a class="menu" href="?menu=charts" style="float:left;display:block;padding:5px 15px 5px 15px;text-decoration:none;letter-spacing:1px;font-size:17px;color:#f1f1f1;border:none;">CHARTS</a>
+      <a class="menu" href="?menu=devices" style="float:left;display:block;padding:5px 15px 5px 15px;text-decoration:none;letter-spacing:1px;font-size:17px;color:#f1f1f1;border:none;">SENSORES</a>
+      <!-- <a class="menu" href="?menu=sqltpl" style="float:left;display:block;padding:5px 15px 5px 15px;text-decoration:none;letter-spacing:1px;font-size:17px;color:#f1f1f1;border:none;">QUERY TEMPLATES</a> -->
       <!-- <select style="height:100%;background-color:gray;" form="formsubg" name="menu" onchange="selectsubg()">
         <option >Charts</option>
         <option value="views">Views</option>
         <option value="sqltpl">SQL templates</option>
         <option value="counters">Counters</option>
       </select>-->
-      <a class="menu" href="mailto:" style="float:right;display:block;padding:5px 15px 5px 15px;text-decoration:none;letter-spacing:1px;font-size:17px;color:#f1f1f1;border:none;">Support request</a>
+      <a class="menu" href="mailto:nunezno@personal.com.py" style="float:right;display:block;padding:5px 15px 5px 15px;text-decoration:none;letter-spacing:1px;font-size:17px;color:#f1f1f1;border:none;">Soporte: Norberto N./SVA</a>
     </div>
   </div>
   <div style="background-color:#e6e6e6;width:100%;position:fixed;top:100px;bottom:0px;overflow-y:auto">'''
-
-# Alarms menu content
-if menu=='alarms':
-  import alarms
-  alarmSearchInput = {'deviceId':None,'severity':2,'active':None,'count':100}
-  if 'searchAlarm' in form:
-    body += str(form)
-  body += '<br><div style="float:left;display:block;"><span style="color:black;"></span><form id="filterAlarm" method="post"><span style="font-weight: bold;">Filter:  </span>Device<select name="deviceId"><option value="">All</option>'
-  import devices
-  devs = devices.getAllDevices(dbconn.conn,dbconn.cur)
-  if 'deviceId' in form:
-    alarmSearchInput['deviceId'] = int(form.getvalue('deviceId'))
-  for dev in devs:
-    body += '<option value="'+str(dev['id'])+'"'
-    if alarmSearchInput['deviceId'] == dev['id']:
-      body += ' selected'
-    body += '>'+dev['name']+'</option>'
-  body += '</select> Severity<select name="sev">'
-  if 'sev' in form:
-    alarmSearchInput['severity'] = int(form.getvalue('sev'))
-  for sevKey,sev in alarms.severities.iteritems():
-    body += '<option value="'+str(sevKey)+'"'
-    if alarmSearchInput['severity'] == sevKey:
-      body += ' selected'
-    body += '>'+sev+'</option>'
-  body += '</select> Active<select name="active"><option value="">All</option>''<option value="t"'
-  if 'active' in form:
-    alarmSearchInput['active'] = form.getvalue('active')
-    if form.getvalue('active') == 't':
-      body += ' selected'
-    body += '>Yes</option><option value="f"'
-    if form.getvalue('active') == 'f':
-      body += ' selected'
-    body += '>No</option>'
-  else:
-    body += '>Yes</option><option value="f">No</option>'
-  body += '</select> Count<input name="count" value="'
-  if 'count' in form:
-    alarmSearchInput['count'] = int(form.getvalue('count'))
-  body += str(alarmSearchInput['count']) +'" type="number" style="width:55px" min="1"> <input type="submit" name="searchAlarm" value="Search" style="background-color:yellow"></form></div>'
-  #body += str(alarmSearchInput)
-
-# Charts menu content
 if menu=='charts':
-  import charts
-  body += charts.getAllCharts(dbconn.conn,dbconn.cur)
-
-# Devices menu content
-if menu=='devices':
-  import devices
-  import time
-  import os
-  #body += '<h1>'+str(os.environ)+'</h1>'
-
-  if 'addDevice' in form:
-    dev = {'name':'','active':True,'muteNoti':True,'floorPlan':None,'twt':0,'tct':0,'hwt':0,'hct':0}
-    dev['name'] = form.getvalue('deviceName')
-    if form.getvalue('deviceActive') == None:
-      dev['active'] = False
-    if form.getvalue('deviceMuteNoti') == None:
-      dev['muteNoti'] = False
-    dev['twt'] = float(form.getvalue('tempWarning'))*10
-    dev['tct'] = float(form.getvalue('tempCritical'))*10
-    dev['hwt'] = float(form.getvalue('humidityWarning'))*10
-    dev['hct'] = float(form.getvalue('humidityCritical'))*10
-    if 'deviceFP' in form:
-      import random
-      dev['floorPlan'] = str(time.time())+'-'+str(random.randint(1,101)*12345)+'.png'
-      #f = open(dev['floorPlan'],'w')
-      #f.write(form['deviceFP'])
-      #f.close()
-      #body += '<p>'+str(form['deviceFP'].value)+'</p>'
-      if form['deviceFP'].file:
-        f = open(dbconn.imagesDB+'/'+dev['floorPlan'],'w')
-	f.write(form['deviceFP'].file.read())
-	f.close()
-    devices.addDevice(dev,dbconn.conn,dbconn.cur)
-    #body += '<h1>'+str(form)+'</h1>'
-    #body += '<h1>'+str(dev)+'</h1>'
-    #body += cgi.print_form(form)
-  if 'modDevice' in form:
-    dev = {'id':None,'active':True,'muteNoti':True,'floorPlan':None,'twt':0,'tct':0,'hwt':0,'hct':0}
-    dev['id'] = int(form.getvalue('devId'))
-    if form.getvalue('deviceActive') == None:
-      dev['active'] = False
-    if form.getvalue('deviceMuteNoti') == None:
-      dev['muteNoti'] = False
-    dev['twt'] = float(form.getvalue('tempWarning'))*10
-    dev['tct'] = float(form.getvalue('tempCritical'))*10
-    dev['hwt'] = float(form.getvalue('humidityWarning'))*10
-    dev['hct'] = float(form.getvalue('humidityCritical'))*10
-    if form['deviceFP'].value != '':
-      import random
-      dev['floorPlan'] = str(time.time())+'-'+str(random.randint(1,101)*12345)+'.png'
-      if form['deviceFP'].file:
-        f = open(dbconn.imagesDB+'/'+dev['floorPlan'],'w')
-	f.write(form['deviceFP'].file.read())
-	f.close()
-    devices.modDevice(dbconn.imagesDB,dev,dbconn.conn,dbconn.cur)
-    #body += '<h1>'+str(form)+'</h1>'
-    #body += '<h1>'+str(dev)+'</h1>'
-  if 'rmvDevice' in form:
-    dev = {'id':None,'active':True,'muteNoti':True,'floorPlan':None,'twt':0,'tct':0,'hwt':0,'hct':0}
-    dev['id'] = int(form.getvalue('devId'))
-    devices.rmvDevice(dbconn.imagesDB,dev,dbconn.conn,dbconn.cur)
-  body += devices.getAllDevicesHtml(dbconn.conn,dbconn.cur)
+  body += '''<form id="formLapso" method="post" action="?menu=charts">
+  <script>
+  function sFormLapso(){
+    var f=document.getElementById('formLapso');
+    f.submit();
+  }'''
+  if lapso=='1h':
+    body+='setTimeout(sFormLapso,60000);'
+  body+='</script>'
+  lapsos={'30d':{'o':1,'checked':False,'label':'1m'},'7d':{'o':2,'checked':False,'label':'7d'},'Ayer':{'o':3,'checked':False,'label':'Ayer'},'24h':{'o':4,'checked':False,'label':'24h'},'12h':{'o':5,'checked':False,'label':'12h'},'6h':{'o':6,'checked':False,'label':'6h'},'1h':{'o':7,'checked':False,'label':'1h (auto refresh)'}}
+  if not lapso in lapsos:
+    lapso='24h'
+  lapsos[lapso]['checked']=True
+  for l,v in sorted(lapsos.items(),key=lambda x: x[1]['o']):
+    body+='<input type="radio" name="lapso" onclick="sFormLapso()" value="'+str(l)+'"'+' id="idInputLapso'+str(l)+'"'
+    if lapsos[l]['checked']:
+      body+='checked'
+    body+='><label for="idInputLapso'+str(l)+'">'+v['label']+'</label>'
+  body+='</form>'
+  import graph
+  import base64
+  import json
+  f1=open(sensoresF,'r')
+  sensores=json.load(f1)
+  f1.close()
+  for sensor in list(map(lambda x: x['hostname'],sensores)):
+    graph.graphconf(dbconn.conn,dbconn.cur,str(sensor),lapso)
+    body+= '<img src="data:image/png;base64,'+base64.b64encode(graph.body)+'" />'
+elif menu=='devices':
+  import json
+  # Sensores
+  f1=open(sensoresF,'r')
+  sensores=json.load(f1)
+  f1.close()
+  # Status
+  # Table
+  body+='<h1>Sensores</h1><table class="reference notranslate"><tr><th>Sonda</th><th>IP</th><th>Recolecci&oacute;n</th><th>Variables</th><th>Estado</th></tr>'
+  for sensor in sensores:
+    body+='<tr>'
+    body+='<td>'+sensor['hostname']+'</td>'
+    body+='<td>'+sensor['ip']+'</td>'
+    if sensor['coleccion']['activo']:
+      recoleccion='<input type="checkbox" checked disabled>Habilitado'
+    else:
+      recoleccion='<input type="checkbox" disabled>Inhabilitado'
+    recoleccion+='<br>M&eacute;todo '+sensor['coleccion']['metodo']
+    body+='<td>'+recoleccion+'</td>'
+    body+='<td>'
+    for variable in sensor['variables']:
+      body+=variable['nombre']+'<br>&emsp;Tipo: '+variable['tipo']+'<br>&emsp;Unidad de medida: '+variable['unidadDeMedida']+'<br>&emsp;Descripci&oacute;n: '+variable['descripcion']+'<br>&emsp;Umbrales:'
+      for umbral in variable['umbrales']:
+        body+='<br>&emsp;&emsp;'+str(umbral['valor'])+'=>'+umbral['estado']
+      body+='<br>'
+    body+='</td><td>'
+    # estado
+    import os
+    sensorStatusFName=logDir+'/'+sensor['hostname']+'.estado.json'
+    if os.path.exists(sensorStatusFName):
+      f1=open(sensorStatusFName,'r')
+      estatus=json.load(f1)
+      f1.close()
+      body+='&Uacute;ltima conexi&oacute;n: '+str(estatus['ultimoContacto'])
+      for variable in estatus['variables']:
+        body+='<br>'+variable['nombre']+': '+str(variable['ultimoValor']/10.0)+' => estado: '+str(variable['ultimoEstado'])
+    body+='</td>'
+    body+='</tr>'
+  body+='</table>'
 body+='''
   </div>
   </body>

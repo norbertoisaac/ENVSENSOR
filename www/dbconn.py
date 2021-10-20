@@ -1,20 +1,20 @@
 #! /usr/bin/python
 import psycopg2
-import psycopg2.extras
 import sys
 import os
+def getDbConn():
+  conn = psycopg2.connect('dbname=sensor user=agent password=%Rn/74gR% host=10.150.31.69')
+  cur = conn.cursor()
+  return conn,cur
+
 inres = 0
-homeDir='/var/lib/radmin'
-imagesDB=homeDir+'/files/images'
 if 'SCRIPT_FILENAME' in os.environ:
-  if '/dbconn.py' in os.environ['SCRIPT_FILENAME']:
+  if os.environ['SCRIPT_FILENAME'] == '/var/www/html/cgi-script/sensor/dbconn.py':
     inres = 1
     body = ''
     headers = 'Content-Type: text/plain; charset=utf-8\r\n'
     headers += "Content-Length: "+str(len(body))+"\r\n\r\n"
     sys.stdout.write(headers+body)
   else:
-    conn = psycopg2.connect('dbname=envsensor user=envsysfe password=%envT434% host=127.0.0.1')
-    cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
-else:
-  quit()
+    conn = psycopg2.connect('dbname=sensor user=agent password=%Rn/74gR% host=10.150.31.69')
+    cur = conn.cursor()
