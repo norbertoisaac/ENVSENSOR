@@ -9,7 +9,11 @@ mkdir -p $home/log
 chown envsensor:www-data $home/log
 chmod 770 $home/log
 cp index.py graph.py eventos.py dbconn.py sample.py sensores.json crontab apache2.conf $home
-chmod 540 $home/{sample.py,index.py}
+chmod 400 $home/*.py
+chown envsensor:envsensor $home/*.py
+chmod 400 $home/dbconn.py
+chown www-data:envsensor $home/dbconn.py
+chmod 500 $home/{sample.py,index.py}
 chown www-data:envsensor $home/{sample.py,index.py}
 # Crontab config
 crontab -u envsensor $home/crontab
