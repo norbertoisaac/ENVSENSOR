@@ -1,11 +1,11 @@
-#! /usr/bin/python
+#! /usr/bin/python3
 import cgi
 import sys
 import dbconn
-dirP="/var/www/html/cgi-script/sensor"
-sensoresF=dirP+"/sensores.json"
-sensoresStatusF=dirP+"/sensoresStatus.json"
-logDir=dirP+"/log"
+home="/var/lib/envsensor"
+sensoresF=home+"/sensores.json"
+sensoresStatusF=home+"/sensoresStatus.json"
+logDir=home+"/log"
 if dbconn.inres != 0:
   quit()
 #graph.graph_format('pdf')
@@ -30,6 +30,7 @@ if 'menu' in form:
   menu=form.getvalue('menu')
 else:
   menu = 'charts'
+  #menu = 'devices'
 body +='''
     <title>Sensor</title>
     <link rel="shortcut icon" type="image/x-icon" href="favicon.ico" />
@@ -141,34 +142,38 @@ body +='''
   </div>
   <div style="background-color:#e6e6e6;width:100%;position:fixed;top:100px;bottom:0px;overflow-y:auto">'''
 if menu=='charts':
-  body += '''<form id="formLapso" method="post" action="?menu=charts">
-  <script>
-  function sFormLapso(){
-    var f=document.getElementById('formLapso');
-    f.submit();
-  }'''
-  if lapso=='1h':
-    body+='setTimeout(sFormLapso,60000);'
-  body+='</script>'
-  lapsos={'30d':{'o':1,'checked':False,'label':'1m'},'7d':{'o':2,'checked':False,'label':'7d'},'Ayer':{'o':3,'checked':False,'label':'Ayer'},'24h':{'o':4,'checked':False,'label':'24h'},'12h':{'o':5,'checked':False,'label':'12h'},'6h':{'o':6,'checked':False,'label':'6h'},'1h':{'o':7,'checked':False,'label':'1h (auto refresh)'}}
-  if not lapso in lapsos:
-    lapso='24h'
-  lapsos[lapso]['checked']=True
-  for l,v in sorted(lapsos.items(),key=lambda x: x[1]['o']):
-    body+='<input type="radio" name="lapso" onclick="sFormLapso()" value="'+str(l)+'"'+' id="idInputLapso'+str(l)+'"'
-    if lapsos[l]['checked']:
-      body+='checked'
-    body+='><label for="idInputLapso'+str(l)+'">'+v['label']+'</label>'
-  body+='</form>'
-  import graph
-  import base64
-  import json
-  f1=open(sensoresF,'r')
-  sensores=json.load(f1)
-  f1.close()
-  for sensor in list(map(lambda x: x['hostname'],sensores)):
-    graph.graphconf(dbconn.conn,dbconn.cur,str(sensor),lapso)
-    body+= '<img src="data:image/png;base64,'+base64.b64encode(graph.body)+'" />'
+  conn,cur=dbconn.getDbConn()
+  if not conn==None:
+    body += '''<form id="formLapso" method="post" action="?menu=charts">
+    <script>
+    function sFormLapso(){
+      var f=document.getElementById('formLapso');
+      f.submit();
+    }'''
+    if lapso=='1h':
+      body+='setTimeout(sFormLapso,60000);'
+    body+='</script>'
+    lapsos={'30d':{'o':1,'checked':False,'label':'1m'},'7d':{'o':2,'checked':False,'label':'7d'},'Ayer':{'o':3,'checked':False,'label':'Ayer'},'24h':{'o':4,'checked':False,'label':'24h'},'12h':{'o':5,'checked':False,'label':'12h'},'6h':{'o':6,'checked':False,'label':'6h'},'1h':{'o':7,'checked':False,'label':'1h (auto refresh)'}}
+    if not lapso in lapsos:
+      lapso='24h'
+    lapsos[lapso]['checked']=True
+    for l,v in sorted(lapsos.items(),key=lambda x: x[1]['o']):
+      body+='<input type="radio" name="lapso" onclick="sFormLapso()" value="'+str(l)+'"'+' id="idInputLapso'+str(l)+'"'
+      if lapsos[l]['checked']:
+        body+='checked'
+      body+='><label for="idInputLapso'+str(l)+'">'+v['label']+'</label>'
+    body+='</form>'
+    import graph
+    import base64
+    import json
+    f1=open(sensoresF,'r')
+    sensores=json.load(f1)
+    f1.close()
+    for sensor in list(map(lambda x: x['hostname'],sensores)):
+      graph.graphconf(conn,cur,str(sensor),lapso)
+      body+= '<img src="data:image/png;base64,'+base64.b64encode(graph.body)+'" />'
+  else:
+    body+='<p>Hay problemas de conexi&oacute;n contra la base de datos</p>'
 elif menu=='devices':
   import json
   # Sensores
