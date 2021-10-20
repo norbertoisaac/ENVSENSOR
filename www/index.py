@@ -1,18 +1,10 @@
 #! /usr/bin/python3
 import cgi
 import sys
-import dbconn
 home="/var/lib/envsensor"
 sensoresF=home+"/sensores.json"
 sensoresStatusF=home+"/sensoresStatus.json"
 logDir=home+"/log"
-if dbconn.inres != 0:
-  quit()
-#graph.graph_format('pdf')
-#graph.graph_draw()
-#fname = open('reporteWelcome.pdf','w')
-#fname.write(graph.body)
-#fname.close()
 form = cgi.FieldStorage()
 body = '''<!DOCTYPE html>
 <html>
@@ -142,6 +134,7 @@ body +='''
   </div>
   <div style="background-color:#e6e6e6;width:100%;position:fixed;top:100px;bottom:0px;overflow-y:auto">'''
 if menu=='charts':
+  import dbconn
   conn,cur=dbconn.getDbConn()
   if not conn==None:
     body += '''<form id="formLapso" method="post" action="?menu=charts">
