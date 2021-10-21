@@ -37,6 +37,8 @@ if rtype == 'sample':
       f1=open(estadoFPath,'w')
       json.dump(estado,f1)
       f1.close()
+    else:
+      body+='<p>No se encontro el archivo para escribir el estado</p>'
   # Insertar en la DB
   sql = "INSERT INTO temp_and_humd_log (name,lat,long,sampletime,status,message,temperature,humidity) VALUES ('"+name+"',"+latitude.replace(',','.')+","+longitude.replace(',','.')+",'"+sampletime+"',"+status+",'"+str(message)+"',"+temperature+","+humidity+")"
   import psycopg2
@@ -50,10 +52,11 @@ if rtype == 'sample':
     body += str(e)
   except psycopg2.ProgrammingError as e:
     body += str(e)
-  body += sql
+  #body += sql
 # Print Response
 status=200
 message="OK"
 headers = 'Content-Type: text/plain; charset=utf-8\r\n'
 headers += "Content-Length: "+str(len(body))+"\r\n\r\n"
+import sys
 sys.stdout.write(headers+body)

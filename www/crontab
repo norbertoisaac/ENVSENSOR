@@ -1,0 +1,1 @@
+* * * * * /usr/bin/python2.7 /var/lib/envsensor/eventos.py >/var/lib/envsensor/log/eventos.py.stdout 2>/var/lib/envsensor/log/eventos.py.stderr

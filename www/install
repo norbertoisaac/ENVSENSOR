@@ -8,12 +8,13 @@ adduser --system --home $home --no-create-home --ingroup envsensor envsensor
 mkdir -p $home/log
 chown envsensor:www-data $home/log
 chmod 770 $home/log
-cp modServers.sh index.py graph.py eventos.py dbconn.py sample.py sensores.json crontab apache2.conf $home
-chmod 555 $home/modServers.sh
+cp modServer.py modServers.sh index.py graph.py eventos.py dbconn.py sample.py sensores.json crontab apache2.conf $home
 chmod 400 $home/*.py
 chown envsensor:envsensor $home/*.py
-chmod 400 $home/dbconn.py
-chown www-data:envsensor $home/dbconn.py
+chown envsensor:envsensor $home/*.sh
+chmod 100 $home/{modServer.py,modServers.sh}
+chown root:root $home/{modServer.py,modServers.sh}
+chown www-data:envsensor $home/{dbconn.py,graph.py}
 chmod 500 $home/{sample.py,index.py}
 chown www-data:envsensor $home/{sample.py,index.py}
 # Crontab config

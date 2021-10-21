@@ -1,4 +1,5 @@
 #! /bin/bash
+home="/var/lib/envsensor"
 if [[ $1 == "add" ]]
 then
   echo -n "IP del sensor: "
@@ -12,7 +13,6 @@ then
   echo -n "  Tipo de variable (temperatura,humedad,etc): "
   read tipoDeVariable
   tmpFile=$(mktemp "${TMPDIR:-/tmp/}$(basename $0).XXXXXXXXXXXX.json")
-  echo $tmpFile
   cat > $tmpFile <<HERE
 {
   "hostname":"$hostname",
@@ -20,40 +20,65 @@ then
   "coleccion":{
     "activo":true,
     "metodo":"pushWeb"
-    },
+  },
   "variables":[
-       {
-         "nombre":"$varName",
-         "tipo":"$tipoDeVariable",
-         "unidadDeMedida":"",
-         "descripcion":"",
-         "medir":true,
-         "rango":{
-           "inferior":0.0,
-           "superior":100.0
-           },
-         "umbrales":[
-           {
-             "valor":0.0,
-             "operador":"ge",
-             "estado":"Normal",
-             "criticidad":"info"
-           }
-         ]
-       }
-    ]
+    {
+      "nombre":"$varName",
+      "tipo":"$tipoDeVariable",
+      "unidadDeMedida":"",
+      "descripcion":"",
+      "medir":true,
+      "rango":{
+        "inferior":0.0,
+        "superior":100.0
+      },
+      "umbrales":[
+        {
+          "valor":0.0,
+          "operador":"ge",
+          "estado":"Normal",
+          "criticidad":"info"
+        }
+      ]
+    }
+  ]
 }
 HERE
-  vim $tmpFile
-  #jsonlint-php $tmpFile
-  #if [[ $? -eq 0 ]]
-  #then
-  #  echo "validacion ok"
-  #fi
-  rm $tmpFile
+  while true
+  do
+    vim $tmpFile
+    estadoFN=$($home/modServer.py add $tmpFile)
+    res=$?
+    echo $res
+    if [[ $res -eq 0 ]]
+    then
+      chmod 660 $estadoFN
+      chown envsensor:www-data $estadoFN
+      rm $tmpFile
+      break
+    elif [[ $res -eq 2 ]] # Falla en la sintaxis json
+    then
+      echo $estadoFN
+      read
+    elif [[ $res -eq 3 ]] # Falla al leer/escribir los archivos
+    then
+      echo $estadoFN
+      read
+      break
+    else # Falla generica
+      echo $estadoFN
+      read
+      break
+    fi
+  done
 elif [[ $1 == "rm" ]]
 then
-  echo "es rm"
+  echo -n "Hostname del sensor: "
+  read hostname
+  if [[ $hostname != '' ]]
+  then
+    $home/modServer.py rm $hostname
+  fi
 elif [[ $1 == "mod" ]]
 then
   echo "es mod"
