@@ -1,15 +1,8 @@
-#! /usr/bin/python
+#! /usr/bin/python3
 import cgi
-import psycopg2
-import os
-import sys
 form = cgi.FieldStorage()
 body = 'OK OK '
-#conn = psycopg2.connect('dbname=sensor user=agent password=%Rn/74gR% host=10.150.31.69')
-#cur = conn.cursor()
-statusFile='/var/www/html/cgi-script/sensor/sensoresStatus.json'
-#baseDir='/var/www/html/cgi/sensor1'
-baseDir='/var/www/html/cgi-script/sensor'
+baseDir='/var/lib/envsensor'
 logDir=baseDir+'/log'
 rtype = ''
 if 'rtype' in form:
@@ -46,14 +39,13 @@ if rtype == 'sample':
       f1.close()
   # Insertar en la DB
   sql = "INSERT INTO temp_and_humd_log (name,lat,long,sampletime,status,message,temperature,humidity) VALUES ('"+name+"',"+latitude.replace(',','.')+","+longitude.replace(',','.')+",'"+sampletime+"',"+status+",'"+str(message)+"',"+temperature+","+humidity+")"
+  import psycopg2
   try:
     import dbconn
-    if dbconn.inres != 0:
-      quit()
-    conn = dbconn.conn
-    cur = dbconn.cur
-    cur.execute(sql)
-    conn.commit()
+    conn,cur = dbconn.getDbConn()
+    if not conn == None:
+      cur.execute(sql)
+      conn.commit()
   except psycopg2.DataError as e:
     body += str(e)
   except psycopg2.ProgrammingError as e:

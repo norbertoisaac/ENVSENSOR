@@ -1,0 +1,20 @@
+{
+  "destinatarios":[
+    {
+      "criticidad":"info",
+      "dstTpl":"dev"
+    },
+    {
+      "criticidad":"error",
+      "dstTpl":"dev"
+    },
+    {
+      "criticidad":"crit",
+      "dstTpl":"dev"
+    },
+    {
+      "criticidad":"alert",
+      "dstTpl":"dev"
+    }
+  ]
+}
