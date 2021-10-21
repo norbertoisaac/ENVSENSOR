@@ -1,0 +1,1 @@
+OK OK INSERT INTO temp_and_humd_log (name,lat,long,sampletime,status,message,temperature,humidity) VALUES ('Datacenter1-Sala1',0.0,0.0,'2021-10-20 22:06:00',0,'None',250,500)
